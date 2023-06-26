@@ -1,4 +1,4 @@
-import "./methods/erc20Methods.spec";
+import "./methods/erc20Methods.spec"; 
 
 methods {
     // getters
