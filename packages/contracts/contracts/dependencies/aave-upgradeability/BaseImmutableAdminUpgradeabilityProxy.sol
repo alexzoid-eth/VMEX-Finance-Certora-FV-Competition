@@ -14,6 +14,7 @@ import "../openzeppelin/upgradeability/BaseUpgradeabilityProxy.sol";
  */
 contract BaseImmutableAdminUpgradeabilityProxy is BaseUpgradeabilityProxy {
     address immutable ADMIN;
+    uint256 FirstVaule;
 
     constructor(address _admin) {
         ADMIN = _admin;
