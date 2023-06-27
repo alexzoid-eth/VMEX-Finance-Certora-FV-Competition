@@ -130,7 +130,7 @@
     "globby": "^11.0.1",
     "hardhat-contract-sizer": "^2.6.1",
     "hardhat-deploy": "^0.11.12",
-    "hardhat-gas-reporter": "^1.0.0",
+    "hardhat-gas-reporter": "^1.0.9",
     "hardhat-test-utils": "^0.1.1",
     "hardhat-typechain": "^0.3.3",
     "husky": "^4.2.5",

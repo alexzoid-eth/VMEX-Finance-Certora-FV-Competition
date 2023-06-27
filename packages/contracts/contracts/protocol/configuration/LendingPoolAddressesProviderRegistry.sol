@@ -37,10 +37,14 @@ contract LendingPoolAddressesProviderRegistry is
         uint256 maxLength = addressesProvidersList.length;
 
         address[] memory activeProviders = new address[](maxLength);
-
-        for (uint256 i = 0; i < maxLength; i++) {
+        // Gas saving
+        for (uint256 i; i < maxLength; ) {
             if (_addressesProviders[addressesProvidersList[i]] > 0) {
                 activeProviders[i] = addressesProvidersList[i];
+            }
+
+            unchecked {
+                ++i;
             }
         }
 
