@@ -5,3 +5,4 @@ dist/
 .npmrc
 .env
 .DS_Store
+.certora_internal
