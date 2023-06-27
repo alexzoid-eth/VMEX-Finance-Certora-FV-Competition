@@ -1,9 +1,10 @@
 import "./methods/erc20Methods.spec";
 
+/////////////////// METHODS ////////////////////////
+
 methods {
     // getters
     function assetMappings(address) internal;
-
 
     // addressesProvider functions
     function _.getGlobalAdmin() external => ALWAYS(333);
@@ -17,18 +18,9 @@ methods {
     function _.getReserveData(address,uint64) external => DISPATCHER(true);
 }
 
-rule onlyOwner(method f, env e, calldataarg args, address asset) {
-    bool existsBefore = assetExists[asset];
+///////////////// DEFINITIONS //////////////////////
 
-    f(e, args);
-
-    bool existsAfter = assetExists[asset];
-
-    assert existsAfter != existsBefore => e.msg.sender == 333; // 333 set as owner in methods block summary for getGlobalAdmin
-}
-
-invariant reasonableLiquidationBonus(address asset) 
-    assetExists[asset] => assetLiqBonus[asset] > 10^18;
+////////////////// FUNCTIONS //////////////////////
 
 // Mirror of assetMappings[asset].liquidationBonus
 ghost mapping (address => uint64) assetLiqBonus {
@@ -48,6 +40,22 @@ hook Sload bool val assetMappings[KEY address asset].(offset 66) STORAGE {
     require assetExists[asset] == val;
 }
 
-hook Sstore assetMappings[KEY address asset].(offset 66) bool val (bool old) STORAGE {
+hook Sstore assetMappings[KEY address asset].(offset 66) bool val (bool _old) STORAGE {
     require assetExists[asset] == val;
 }
+
+///////////////// PROPERTIES ///////////////////////
+
+rule onlyOwner(method f, env e, calldataarg args, address asset) {
+    bool existsBefore = assetExists[asset];
+
+    f(e, args);
+
+    bool existsAfter = assetExists[asset];
+
+    assert existsAfter != existsBefore => e.msg.sender == 333; // 333 set as owner in methods block summary for getGlobalAdmin
+}
+
+invariant reasonableLiquidationBonus(address asset) 
+    assetExists[asset] => assetLiqBonus[asset] > 10^18;
+
