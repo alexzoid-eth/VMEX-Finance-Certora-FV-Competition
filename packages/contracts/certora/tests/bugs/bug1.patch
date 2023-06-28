@@ -1,0 +1,13 @@
+diff --git a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
+index 7230fdcc..3a246b2d 100644
+--- a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
++++ b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
+@@ -199,7 +199,7 @@ contract AssetMappings is IAssetMappings, VersionedInitializable{
+      **/
+     function addAssetMapping(
+         AddAssetMappingInput[] memory input
+-    ) external onlyGlobalAdmin {
++    ) external {
+         for(uint256 i = 0; i<input.length; i++) {
+             AddAssetMappingInput memory inputAsset = input[i];
+             address currentAssetAddress = inputAsset.asset;
