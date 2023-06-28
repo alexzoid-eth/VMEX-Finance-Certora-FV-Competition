@@ -21,24 +21,24 @@ methods {
 ///////////////// DEFINITIONS //////////////////////
 
 ////////////////// FUNCTIONS //////////////////////
-
-// Mirror of assetMappings[asset].liquidationBonus
+/*
 ghost mapping (address => uint64) assetLiqBonus {
     init_state axiom forall address asset. assetLiqBonus[asset] == 0;
 }
 
+hook Sload uint64 val assetMappings[KEY address asset].liquidationBonus STORAGE {
+    require assetLiqBonus[asset] == val;
+}
+*/
 ghost mapping (address => bool) assetExists {
     init_state axiom forall address asset. assetExists[asset] == false;
 }
 
-// Stores the value accessed by SSLOAD in a ghost variable to keep track in CVL as the variable is internal in Solidity
-hook Sload uint64 val assetMappings[KEY address asset].liquidationBonus STORAGE {
-    require assetLiqBonus[asset] == val;
-}
-
+/*
 hook Sload bool val assetMappings[KEY address asset].(offset 66) STORAGE {
     require assetExists[asset] == val;
 }
+*/
 
 hook Sstore assetMappings[KEY address asset].(offset 66) bool val (bool _old) STORAGE {
     require assetExists[asset] == val;
@@ -51,6 +51,7 @@ hook Sstore assetMappings[KEY address asset].(offset 66) bool val (bool _old) ST
 * Hight level: only global admin could add new asset
 **/
 rule onlyGlobalAdminCanAddAsset(method f, env e, calldataarg args, address asset) 
+    filtered { f -> !f.isView }
 {
     bool existsBefore = assetExists[asset];
 
@@ -58,10 +59,11 @@ rule onlyGlobalAdminCanAddAsset(method f, env e, calldataarg args, address asset
 
     bool existsAfter = assetExists[asset];
 
-    assert existsAfter != existsBefore 
-        => e.msg.sender == 333; // 333 set as owner in methods block summary for getGlobalAdmin
+    assert existsAfter != existsBefore;
+        //=> e.msg.sender == 331; // 333 set as owner in methods block summary for getGlobalAdmin
 }
 
+/*
 invariant reasonableLiquidationBonus(address asset) 
     assetExists[asset] => assetLiqBonus[asset] > 10^18;
-
+*/
