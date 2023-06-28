@@ -53,7 +53,7 @@ contract LendingPoolAddressesProvider is
 
     constructor(string memory marketId) {
         _setMarketId(marketId);
-        // permissionlessTranches = false; // Gas saving
+        // permissionlessTranches = false; // Gas saving: is 0 by default
     }
 
     function getVMEXTreasury() external view override returns(address){
