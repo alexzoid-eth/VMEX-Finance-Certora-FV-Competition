@@ -46,14 +46,20 @@ hook Sstore assetMappings[KEY address asset].(offset 66) bool val (bool _old) ST
 
 ///////////////// PROPERTIES ///////////////////////
 
-rule onlyOwner(method f, env e, calldataarg args, address asset) {
+/**
+* @notice Prove bug1.patch
+* Hight level: only global admin could add new asset
+**/
+rule onlyGlobalAdminCanAddAsset(method f, env e, calldataarg args, address asset) 
+{
     bool existsBefore = assetExists[asset];
 
     f(e, args);
 
     bool existsAfter = assetExists[asset];
 
-    assert existsAfter != existsBefore => e.msg.sender == 333; // 333 set as owner in methods block summary for getGlobalAdmin
+    assert existsAfter != existsBefore 
+        => e.msg.sender == 333; // 333 set as owner in methods block summary for getGlobalAdmin
 }
 
 invariant reasonableLiquidationBonus(address asset) 
