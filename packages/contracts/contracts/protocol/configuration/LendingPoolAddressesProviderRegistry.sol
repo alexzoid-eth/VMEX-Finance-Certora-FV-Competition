@@ -39,7 +39,7 @@ contract LendingPoolAddressesProviderRegistry is
         address[] memory activeProviders = new address[](maxLength);
         // Gas saving
         for (uint256 i; i < maxLength; ) {
-            if (_addressesProviders[addressesProvidersList[i]] > 0) {
+            if (_addressesProviders[addressesProvidersList[i]] != 0) {
                 activeProviders[i] = addressesProvidersList[i];
             }
 
@@ -78,7 +78,7 @@ contract LendingPoolAddressesProviderRegistry is
         onlyOwner
     {
         require(
-            _addressesProviders[provider] > 0,
+            _addressesProviders[provider] != 0, // Gas saving
             Errors.LPAPR_PROVIDER_NOT_REGISTERED
         );
         _addressesProviders[provider] = 0;
@@ -100,10 +100,14 @@ contract LendingPoolAddressesProviderRegistry is
 
     function _addToAddressesProvidersList(address provider) internal {
         uint256 providersCount = _addressesProvidersList.length;
-
-        for (uint256 i = 0; i < providersCount; i++) {
+        // Gas saving
+        for (uint256 i; i < providersCount; ) {
             if (_addressesProvidersList[i] == provider) {
                 return;
+            }
+
+            unchecked {
+                ++i;
             }
         }
 
