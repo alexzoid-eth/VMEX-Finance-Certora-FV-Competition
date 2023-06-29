@@ -1,0 +1,22 @@
+diff --git a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
+index 7230fdcc..9e77b9dc 100644
+--- a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
++++ b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
+@@ -241,7 +241,7 @@ contract AssetMappings is IAssetMappings, VersionedInitializable{
+                 approvedAssetsTail = currentAssetAddress;
+             }
+ 
+-            emit AssetDataSet(
++            /*emit AssetDataSet(
+                 currentAssetAddress,
+                 IERC20Detailed(currentAssetAddress).decimals(),
+                 currentAssetAddress.getSymbol(),
+@@ -253,7 +253,7 @@ contract AssetMappings is IAssetMappings, VersionedInitializable{
+                 inputAsset.borrowFactor,
+                 inputAsset.borrowingEnabled,
+                 inputAsset.VMEXReserveFactor
+-            );
++            );*/
+         }
+     }
+ 

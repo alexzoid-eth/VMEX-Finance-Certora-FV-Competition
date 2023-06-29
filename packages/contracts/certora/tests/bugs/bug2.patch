@@ -1,0 +1,13 @@
+diff --git a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
+index 7230fdcc..b7419aa7 100644
+--- a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
++++ b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
+@@ -211,7 +211,7 @@ contract AssetMappings is IAssetMappings, VersionedInitializable{
+             inputAsset.borrowFactor = uint256(inputAsset.borrowFactor).convertToPercent().toUint64();
+             inputAsset.VMEXReserveFactor = uint256(inputAsset.VMEXReserveFactor).convertToPercent().toUint64();
+ 
+-            validateCollateralParams(inputAsset.baseLTV, inputAsset.liquidationThreshold, inputAsset.liquidationBonus, inputAsset.borrowFactor);
++            //validateCollateralParams(inputAsset.baseLTV, inputAsset.liquidationThreshold, inputAsset.liquidationBonus, inputAsset.borrowFactor);
+             validateVMEXReserveFactor(inputAsset.VMEXReserveFactor);
+ 
+             DataTypes.AssetData storage currentAssetMapping = assetMappings[currentAssetAddress];
