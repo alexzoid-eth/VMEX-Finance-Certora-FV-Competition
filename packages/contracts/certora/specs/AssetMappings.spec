@@ -22,6 +22,8 @@ methods {
 
 ///////////////// DEFINITIONS //////////////////////
 
+definition PERCENTAGE_FACTOR() returns uint64 = 10^18;
+
 ////////////////// FUNCTIONS //////////////////////
 
 /**
@@ -50,6 +52,22 @@ hook Sstore assetMappings[KEY address asset].(offset 66) bool val (bool _old) ST
 }
 
 /**
+* @notice Getter for assetMappings[asset].liquidationThreshold
+**/
+
+ghost mapping (address => uint64) assetLiqThreshold {
+    init_state axiom forall address asset. assetLiqThreshold[asset] == 0;
+}
+
+hook Sload uint64 val assetMappings[KEY address asset].liquidationThreshold STORAGE {
+    require assetLiqThreshold[asset] == val;
+}
+
+hook Sstore assetMappings[KEY address asset].liquidationThreshold uint64 val (uint64 _old) STORAGE {
+    assetLiqThreshold[asset] = val;
+}
+
+/**
 * @notice Getter for assetMappings[asset].liquidationBonus
 **/
 
@@ -69,10 +87,10 @@ hook Sstore assetMappings[KEY address asset].liquidationBonus uint64 val (uint64
 
 /**
 * @notice Prove bug1.patch
-* Hight level: only global admin could add a new asset
+* Hight level: only global admin can add a new asset
 **/
-
 rule onlyGlobalAdminCanAddAsset(method f, env e, calldataarg args, address asset) 
+    filtered { f -> !f.isView }
 {
     setup(e);
 
@@ -82,14 +100,16 @@ rule onlyGlobalAdminCanAddAsset(method f, env e, calldataarg args, address asset
 
     bool after = assetExists[asset];
 
-    assert before != after
-        => e.msg.sender == 333; // 333 set as owner in methods block summary for getGlobalAdmin;
+    // `333` set as owner in methods block summary for `getGlobalAdmin()`
+    assert before != after => e.msg.sender == 333; 
 }
 
 /**
 * @notice Prove bug2.patch
-* Valid state: `liquidationBonus` > 10^18
+* Valid state: `liquidationBonus` > `PercentageMath.PERCENTAGE_FACTOR`
+* @dev if `liquidationThreshold` is zero, then disabled as collateral
 **/
-
 invariant reasonableLiquidationBonus(address asset) 
-    assetExists[asset] => assetLiqBonus[asset] > 10^18;
+    assetExists[asset] && assetLiqThreshold[asset] != 0 
+        => assetLiqBonus[asset] > PERCENTAGE_FACTOR()
+    filtered { f -> !f.isView }
