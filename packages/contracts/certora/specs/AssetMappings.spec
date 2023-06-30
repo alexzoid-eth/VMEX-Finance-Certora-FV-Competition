@@ -27,24 +27,11 @@ definition PERCENTAGE_FACTOR() returns uint64 = 10^18;
 ////////////////// FUNCTIONS //////////////////////
 
 /**
-* @notice Call this in each rule
-**/
-
-function setup(env e) {
-    require (approvedAssetsHead(e) == 0);
-    require (approvedAssetsTail(e) == 0);
-}
-
-/**
 * @notice Getter for assetMappings[asset].exists
 **/
 
 ghost mapping (address => bool) assetExists {
     init_state axiom forall address asset. assetExists[asset] == false;
-}
-
-hook Sload bool val assetMappings[KEY address asset].(offset 66) STORAGE {
-    require assetExists[asset] == val;
 }
 
 hook Sstore assetMappings[KEY address asset].(offset 66) bool val (bool _old) STORAGE {
@@ -59,10 +46,6 @@ ghost mapping (address => uint64) assetLiqThreshold {
     init_state axiom forall address asset. assetLiqThreshold[asset] == 0;
 }
 
-hook Sload uint64 val assetMappings[KEY address asset].liquidationThreshold STORAGE {
-    require assetLiqThreshold[asset] == val;
-}
-
 hook Sstore assetMappings[KEY address asset].liquidationThreshold uint64 val (uint64 _old) STORAGE {
     assetLiqThreshold[asset] = val;
 }
@@ -75,13 +58,11 @@ ghost mapping (address => uint64) assetLiqBonus {
     init_state axiom forall address asset. assetLiqBonus[asset] == 0;
 }
 
-hook Sload uint64 val assetMappings[KEY address asset].liquidationBonus STORAGE {
-    require assetLiqBonus[asset] == val;
-}
-
 hook Sstore assetMappings[KEY address asset].liquidationBonus uint64 val (uint64 _old) STORAGE {
     assetLiqBonus[asset] = val;
 }
+
+
 
 ///////////////// PROPERTIES ///////////////////////
 
@@ -92,8 +73,6 @@ hook Sstore assetMappings[KEY address asset].liquidationBonus uint64 val (uint64
 rule onlyGlobalAdminCanAddAsset(method f, env e, calldataarg args, address asset) 
     filtered { f -> !f.isView }
 {
-    setup(e);
-
     bool before = assetExists[asset];
 
     f(e, args);
@@ -113,3 +92,16 @@ invariant reasonableLiquidationBonus(address asset)
     assetExists[asset] && assetLiqThreshold[asset] != 0 
         => assetLiqBonus[asset] > PERCENTAGE_FACTOR()
     filtered { f -> !f.isView }
+
+/**
+* @notice Prove bug3.patch
+* Unit-test: `initialize()` could be called only once
+**/
+rule initializeCalledOnce(env e, calldataarg args) {
+
+    initialize(e, args);
+
+    initialize@withrevert(e, args);
+
+    assert lastReverted;
+}
