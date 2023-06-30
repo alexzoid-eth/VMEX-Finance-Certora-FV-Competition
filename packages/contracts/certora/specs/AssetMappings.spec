@@ -5,8 +5,11 @@ import "./methods/erc20Methods.spec";
 methods {
     // getters
     function assetMappings(address) internal;
-    function approvedAssetsHead() internal;
-    function approvedAssetsTail() internal;
+    function approvedAssetsHead() internal returns(address);
+    function approvedAssetsTail() internal returns(address);
+
+    // VersionedInitializable
+    function _VersionedInitializable.initializing() internal;
 
     // addressesProvider functions
     function _.getGlobalAdmin() external => ALWAYS(333);
@@ -62,7 +65,30 @@ hook Sstore assetMappings[KEY address asset].liquidationBonus uint64 val (uint64
     assetLiqBonus[asset] = val;
 }
 
+/**
+* @notice `approvedAssetsHead` and `approvedAssetsTail` previous values
+**/
 
+ghost approvedAssetsHeadOld() returns address {
+    init_state axiom approvedAssetsHeadOld() == 0;
+}
+
+ghost approvedAssetsTailOld() returns address {
+    init_state axiom approvedAssetsTailOld() == 0;
+}
+
+ghost approvedAssetsHeadTouched() returns bool {
+    init_state axiom approvedAssetsHeadTouched() == false;
+}
+
+hook Sstore approvedAssetsHead address val (address val_old) STORAGE {
+    require approvedAssetsHeadOld() == val_old;
+    require approvedAssetsHeadTouched() == true;
+}
+
+hook Sstore approvedAssetsTail address val (address val_old) STORAGE {
+    require approvedAssetsTailOld() == val_old;
+}
 
 ///////////////// PROPERTIES ///////////////////////
 
@@ -95,13 +121,8 @@ invariant reasonableLiquidationBonus(address asset)
 
 /**
 * @notice Prove bug3.patch
-* Unit-test: `initialize()` could be called only once
+* Unit test: `initialize()` could be called once
+* @dev `approvedAssetsHead` is set to zero here
 **/
-rule initializeCalledOnce(env e, calldataarg args) {
-
-    initialize(e, args);
-
-    initialize@withrevert(e, args);
-
-    assert lastReverted;
-}
+invariant initializeCalledOnce() approvedAssetsHeadTouched() == false
+    filtered { f -> f.selector == sig:initialize(address).selector }

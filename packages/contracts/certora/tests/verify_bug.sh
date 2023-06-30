@@ -18,10 +18,10 @@ then
   MSG="[prove $FILE_NAME] $@"
 fi
 
-git apply packages/contracts/certora/tests/harness.patch
+git apply packages/contracts/certora/tests/applyHarness.patch
 git apply packages/contracts/certora/tests/bugs/${FILE_NAME}.patch
 cd packages/contracts
 certoraRun certora/confs/AssetMappings.conf --msg "${MSG}" "$@" # pass all other parameters to certoraRun
 cd ../../
 git apply -R packages/contracts/certora/tests/bugs/${FILE_NAME}.patch
-git apply -R packages/contracts/certora/tests/harness.patch
+git apply -R packages/contracts/certora/tests/applyHarness.patch
