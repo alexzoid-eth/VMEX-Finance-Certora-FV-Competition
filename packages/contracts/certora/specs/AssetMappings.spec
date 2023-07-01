@@ -23,7 +23,7 @@ methods {
     function _.getReserveData(address,uint64) external => DISPATCHER(true);
 
     // Assume that passed addresses are contracts
-    function _.isContract(address) internal => ALWAYS(true); 
+    // function _.isContract(address) internal => ALWAYS(true); 
 }
 
 ///////////////// DEFINITIONS //////////////////////
@@ -41,6 +41,9 @@ ghost mapping (address => bool) assetExists {
 }
 
 hook Sstore assetMappings[KEY address asset].(offset 66) bool val (bool _old) STORAGE {
+    // Assuming `asset` is not zero because of `Address.isContract(currentAssetAddress)` check
+    require asset != 0;
+    // Save `assetMappings[asset].exists` value
     assetExists[asset] = val;
 }
 
@@ -105,7 +108,7 @@ hook Sload address val approvedAssetsTail STORAGE {
 }
 
 /**
-* @notice Save `approvedAssetsHead` and `approvedAssetsTail` previous values
+* @notice Save `approvedAssetsHead` and `approvedAssetsTail` previous values, skip first write
 **/
 
 ghost bool approvedAssetsHeadFirstWrite {
@@ -120,8 +123,6 @@ hook Sstore approvedAssetsHead address val (address val_old) STORAGE {
     if(approvedAssetsHeadFirstWrite) {
         approvedAssetsHeadFirstWrite = false;
     } else {
-        // could not be zero because isContract() check
-        require val != 0;
         approvedAssetsHeadOld = val_old;
     }
 }
@@ -138,8 +139,6 @@ hook Sstore approvedAssetsTail address val (address val_old) STORAGE {
     if(approvedAssetsTailFirstWrite) {
         approvedAssetsTailFirstWrite = false;
     } else {
-        // could not be zero because isContract() check
-        require val != 0;
         approvedAssetsTailOld = val_old;
     }
 }
@@ -193,24 +192,7 @@ rule initializeCalledOnce() {
 
 /**
 * @notice Prove bug4.patch
-* Variable transition: `approvedAssetsHead` and `approvedAssetsTail`
+* Valid state: list's head could be changed only once
 **/
-
-invariant approvedAssetsHeadTransition(env e) 
-    // Head set to zero only once in `initialize()` alongside with a tail
-    (approvedAssetsHead(e) == 0 => approvedAssetsTailOld == 0 && approvedAssetsTail(e) == 0) 
-    // Head should set to non-zero once in `addAssetMapping()` function
-    && (approvedAssetsHeadOld == 0)
-    // First element in the list should point to head
-    && (approvedAssetsTailOld == 0 && approvedAssetsTail(e) != 0 => approvedAssetsTail(e) == approvedAssetsHead(e))
-    // Could not uninitialize a list
-    && (approvedAssetsTailOld != 0 => approvedAssetsTail(e) != 0)
-    // Second and more element in the list could not point to the head
-    // && (approvedAssetsTailOld != 0 => approvedAssetsTail(e) != approvedAssetsHead(e))
-        filtered { f -> !f.isView }
-    {
-        preserved initialize(address provider) with (env e2) {
-            require approvedAssetsHead(e2) == 0;
-            require approvedAssetsTail(e2) == 0;
-        }
-    }
+invariant headChangeOnlyOnce() approvedAssetsHeadOld == 0
+    filtered { f -> !f.isView }

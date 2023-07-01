@@ -1,0 +1,12 @@
+diff --git a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
+index 7230fdcc..cc6983de 100644
+--- a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
++++ b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
+@@ -238,6 +238,7 @@ contract AssetMappings is IAssetMappings, VersionedInitializable{
+             else {
+                 // add to end
+                 assetMappings[approvedAssetsTail].nextApprovedAsset = currentAssetAddress;
++                approvedAssetsHead = currentAssetAddress;
+                 approvedAssetsTail = currentAssetAddress;
+             }
+ 
