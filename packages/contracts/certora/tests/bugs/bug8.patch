@@ -1,0 +1,13 @@
+diff --git a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
+index 7230fdcc..1b6e5ad2 100644
+--- a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
++++ b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
+@@ -294,7 +294,7 @@ contract AssetMappings is IAssetMappings, VersionedInitializable{
+      * @param isAllowed true if allowed, false otherwise
+      **/
+     function setAssetAllowed(address asset, bool isAllowed) external onlyGlobalAdmin{
+-        require(isAssetInMappings(asset), Errors.AM_ASSET_DOESNT_EXIST);
++        // require(isAssetInMappings(asset), Errors.AM_ASSET_DOESNT_EXIST);
+         if (!isAllowed) {
+             validateAssetAllowed(asset);
+         }
