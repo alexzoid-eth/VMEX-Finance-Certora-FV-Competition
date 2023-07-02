@@ -1,5 +1,6 @@
 import "./methods/erc20Methods.spec";
 
+using AssetMappings as _AssetMappings;
 using AssetMappingsHarness as _AssetMappingsHarness;
 
 /////////////////// METHODS ////////////////////////
@@ -40,10 +41,6 @@ definition VIEW_FUNCTIONS(method f) returns bool = f.isView;
 // `initialize()` function
 definition INITIALIZE_FUNCTION(method f) returns bool 
     = f.selector == sig:initialize(address).selector;
-
-// All modify state functions need global admin modifier (except `initialize()`) 
-definition GLOBAL_ADMIN_FUNCTIONS(method f) returns bool 
-    = !VIEW_FUNCTIONS(f) && !INITIALIZE_FUNCTION(f); 
 
 ////////////////// FUNCTIONS //////////////////////
 
@@ -133,6 +130,13 @@ hook Sstore approvedAssetsTail address val (address val_old) STORAGE {
 ///////////////// PROPERTIES ///////////////////////
 
 /**
+* @notice No patch implemented
+* Valid state: revision version is stored in `lastInitializedRevision` as soon as contract 
+* is initialized
+**/
+invariant lastRevisionSolvency() _AssetMappingsHarness.getRevisionHarness() >= lastRevision;
+
+/**
 * @notice Prove bug1.patch
 * Hight level: only global admin can add a new asset
 **/
@@ -199,11 +203,11 @@ invariant listUninitializable(env e) approvedAssetsHead(e) == 0 || approvedAsset
 
 /**
 * @notice Prove bug6.patch
-* High level: only global admin can modify the contract's state (`initialize()` is exception)
+* High level: only global admin can execute non-view fucntions (`initialize()` is an exception)
 **/
 
-rule onlyGlobalAdminCanModifyState(method f, env e, calldataarg args) 
-    filtered { f -> GLOBAL_ADMIN_FUNCTIONS(f) } {
+rule onlyGlobalAdminCanExecuteNonViewFunctions(method f, env e, calldataarg args) 
+    filtered { f -> !VIEW_FUNCTIONS(f) && !INITIALIZE_FUNCTION(f) } {
     
     f@withrevert(e, args);
 
@@ -212,8 +216,21 @@ rule onlyGlobalAdminCanModifyState(method f, env e, calldataarg args)
 }
 
 /**
-* @notice Prove bug7.patch
-* Valid state: revesion version is stored in `lastInitializedRevision` as soon as contract 
-* is initialized
+* @notice Prove bug6.patch
+* High level: only global admin can modify state (`initialize()` is an exception)
 **/
-invariant lastRevisionSolvency() _AssetMappingsHarness.getRevisionHarness() >= lastRevision;
+
+rule onlyGlobalAdminCanModifyState(method f, env e, calldataarg args) 
+    filtered { f -> !VIEW_FUNCTIONS(f) && !INITIALIZE_FUNCTION(f) } {
+    
+    storage before = lastStorage;
+
+    f@withrevert(e, args);
+
+    storage after = lastStorage;
+
+    // `333` set as owner in methods block summary for `getGlobalAdmin()`
+    assert !lastReverted && before[_AssetMappings] == after[_AssetMappings]
+        => e.msg.sender == 333;
+}
+
