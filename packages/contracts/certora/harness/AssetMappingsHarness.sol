@@ -11,4 +11,9 @@ contract AssetMappingsHarness is AssetMappings {
     function getRevisionHarness() external pure returns (uint256) {
         return getRevision();
     }
+
+    function validateAssetAllowedHarness(address asset) view external returns(bool) {
+        validateAssetAllowed(asset);
+        return true;
+    }
 }

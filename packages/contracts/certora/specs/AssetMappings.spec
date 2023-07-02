@@ -2,16 +2,18 @@ import "./methods/erc20Methods.spec";
 
 using AssetMappingsHarness as _AssetMappingsHarness;
 
-/////////////////// METHODS ////////////////////////
+////////////////////////////////////// METHODS //////////////////////////////////////
 
 methods {
     // getters
     function assetMappings(address) internal;
     function approvedAssetsHead() internal returns(address);
     function approvedAssetsTail() internal returns(address);
+    function isAssetInMappings(address) internal returns(bool);
 
     // AssetMappingsHarness 
     function _AssetMappingsHarness.getRevisionHarness() external returns(uint256) envfree;
+    function _AssetMappingsHarness.validateAssetAllowedHarness(address) external returns(bool);
 
     // VersionedInitializable
     function _VersionedInitializable.lastInitializedRevision() internal;
@@ -29,7 +31,7 @@ methods {
     function _.getReserveData(address,uint64) external => DISPATCHER(true);
 }
 
-///////////////// DEFINITIONS //////////////////////
+////////////////////////////////////// DEFINITIONS //////////////////////////////////////
 
 // `PercentageMath.PERCENTAGE_FACTOR`
 definition PERCENTAGE_FACTOR() returns uint64 = 10^18;
@@ -45,22 +47,7 @@ definition INITIALIZE_FUNCTION(method f) returns bool
 definition ADD_ASSET_MAPPING_FUNCTION(method f) returns bool 
     = f.selector == sig:addAssetMapping(AssetMappings.AddAssetMappingInput[]).selector;
 
-////////////////// FUNCTIONS //////////////////////
-
-/**
-* @notice Getter for assetMappings[asset].exists
-**/
-
-ghost mapping (address => bool) assetExists {
-    init_state axiom forall address asset. assetExists[asset] == false;
-}
-
-hook Sstore assetMappings[KEY address asset].(offset 66) bool val STORAGE {
-    // Assuming `asset` is not zero because of `Address.isContract(currentAssetAddress)` check
-    require asset != 0;
-    // Save `assetMappings[asset].exists` value
-    assetExists[asset] = val;
-}
+////////////////////////////////////// FUNCTIONS //////////////////////////////////////
 
 /**
 * @notice Getter for assetMappings[asset].liquidationThreshold
@@ -84,6 +71,33 @@ ghost mapping (address => uint64) assetLiqBonus {
 
 hook Sstore assetMappings[KEY address asset].liquidationBonus uint64 val STORAGE {
     assetLiqBonus[asset] = val;
+}
+
+/**
+* @notice Getter for assetMappings[asset].isAllowed
+**/
+
+ghost mapping (address => bool) assetAllowed {
+    init_state axiom forall address asset. assetAllowed[asset] == true;
+}
+
+hook Sstore assetMappings[KEY address asset].(offset 65) bool val STORAGE {
+    assetAllowed[asset] = val;
+}
+
+/**
+* @notice Getter for assetMappings[asset].exists
+**/
+
+ghost mapping (address => bool) assetExists {
+    init_state axiom forall address asset. assetExists[asset] == false;
+}
+
+hook Sstore assetMappings[KEY address asset].(offset 66) bool val STORAGE {
+    // Assuming `asset` is not zero because of `Address.isContract(currentAssetAddress)` check
+    require asset != 0;
+    // Save `assetMappings[asset].exists` value
+    assetExists[asset] = val;
 }
 
 /**
@@ -193,7 +207,7 @@ hook Sstore assetMappings[KEY address asset].(offset 64) uint256 val STORAGE {
         : assetTwoAddress@new == asset;
 }
 
-///////////////// PROPERTIES ///////////////////////
+////////////////////////////////////// PROPERTIES //////////////////////////////////////
 
 /**
 * @notice No patch implemented
@@ -311,8 +325,31 @@ rule oneAssetRecordCouldBeModified(method f, env e, calldataarg args)
     require assetOneAddress == 0;
     require assetTwoAddress == 0;
 
-    f@withrevert(e, args);
+    f(e, args);
 
-    assert !lastReverted => assetTwoAddress == 0;
+    assert assetTwoAddress == 0;
 }
 
+/**
+* @notice Prove bug8.patch
+* High level: only existing record could be modified (don't mean adding new) 
+**/
+
+rule existingAssetRecordCouldBeModified(method f, env e, calldataarg args) 
+    filtered { f -> !VIEW_FUNCTIONS(f) } {
+
+    require assetOneAddress == 0;
+
+    f(e, args);
+
+    assert assetOneAddress != 0 => isAssetInMappings(e, assetOneAddress);
+}
+
+/**
+* @notice Prove bug9.patch
+* Valid state: disallowed assets should meet several criteria. There cannot be any outstanding 
+* borrows or deposits in the reserve, and it must be set off for borrowing and collateral
+**/
+
+invariant disallowedAssetsSolvency(env e, address asset) 
+    assetAllowed[asset] == false => _AssetMappingsHarness.validateAssetAllowedHarness(e, asset);
