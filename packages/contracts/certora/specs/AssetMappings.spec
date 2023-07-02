@@ -1,5 +1,7 @@
 import "./methods/erc20Methods.spec";
 
+using AssetMappingsHarness as _AssetMappingsHarness;
+
 /////////////////// METHODS ////////////////////////
 
 methods {
@@ -8,7 +10,11 @@ methods {
     function approvedAssetsHead() internal returns(address);
     function approvedAssetsTail() internal returns(address);
 
+    // AssetMappingsHarness 
+    function _AssetMappingsHarness.getRevisionHarness() external returns(uint256) envfree;
+
     // VersionedInitializable
+    function _VersionedInitializable.lastInitializedRevision() internal;
     function _VersionedInitializable.initializing() internal;
 
     // addressesProvider functions
@@ -78,6 +84,18 @@ ghost mapping (address => uint64) assetLiqBonus {
 
 hook Sstore assetMappings[KEY address asset].liquidationBonus uint64 val STORAGE {
     assetLiqBonus[asset] = val;
+}
+
+/**
+* @notice Getter for VersionedInitializable.lastInitializedRevision
+**/
+
+ghost uint256 lastRevision {
+    init_state axiom lastRevision == 0;
+}
+
+hook Sstore lastInitializedRevision uint256 val STORAGE {
+    havoc lastRevision assuming lastRevision@new == val;
 }
 
 /**
@@ -192,3 +210,10 @@ rule onlyGlobalAdminCanModifyState(method f, env e, calldataarg args)
     // `333` set as owner in methods block summary for `getGlobalAdmin()`
     assert !lastReverted => e.msg.sender == 333;
 }
+
+/**
+* @notice Prove bug7.patch
+* Valid state: revesion version is stored in `lastInitializedRevision` as soon as contract 
+* is initialized
+**/
+invariant lastRevisionSolvency() _AssetMappingsHarness.getRevisionHarness() >= lastRevision;
