@@ -35,14 +35,9 @@ definition VIEW_FUNCTIONS(method f) returns bool = f.isView;
 definition INITIALIZE_FUNCTION(method f) returns bool 
     = f.selector == sig:initialize(address).selector;
 
-definition EXCLUDE_FUNCTIONS(method f) returns bool 
+// All modify state functions need global admin modifier (except `initialize()`) 
+definition GLOBAL_ADMIN_FUNCTIONS(method f) returns bool 
     = !VIEW_FUNCTIONS(f) && !INITIALIZE_FUNCTION(f); 
-
-// `onlyGlobalAdmin` functions
-definition GLOBAL_ADMIN_FUNCTIONS(method f) returns bool
-    = f.selector == sig:setVMEXReserveFactor(address, uint256).selector
-    && f.selector == sig:setBorrowingEnabled(address, bool).selector
-    ;
 
 ////////////////// FUNCTIONS //////////////////////
 
@@ -171,18 +166,29 @@ rule initializeCalledOnce() {
 * @notice Prove bug4.patch
 * Variable transition: list's head could be changed only once
 **/
+
 invariant listSetHeadOnlyOnce() assetsHeadOld == 0
-    filtered { f -> EXCLUDE_FUNCTIONS(f) } 
+    filtered { f -> !VIEW_FUNCTIONS(f) && !INITIALIZE_FUNCTION(f) } 
 
 /**
 * @notice Prove bug5.patch
 * Valid state: list's head or tail could not be uninitialized 
 **/
+
 invariant listUninitializable(env e) approvedAssetsHead(e) == 0 || approvedAssetsTail(e) == 0 
     => approvedAssetsHead(e) == 0 && approvedAssetsTail(e) == 0 && assetsTailOld == 0
-    filtered { f -> EXCLUDE_FUNCTIONS(f) } 
+    filtered { f -> !VIEW_FUNCTIONS(f) && !INITIALIZE_FUNCTION(f) } 
 
 /**
 * @notice Prove bug6.patch
-* High level: only global admin can execute administrative functions
+* High level: only global admin can modify the contract's state (`initialize()` is exception)
 **/
+
+rule onlyGlobalAdminCanModifyState(method f, env e, calldataarg args) 
+    filtered { f -> GLOBAL_ADMIN_FUNCTIONS(f) } {
+    
+    f@withrevert(e, args);
+
+    // `333` set as owner in methods block summary for `getGlobalAdmin()`
+    assert !lastReverted => e.msg.sender == 333;
+}
