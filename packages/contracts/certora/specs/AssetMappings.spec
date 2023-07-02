@@ -1,6 +1,5 @@
 import "./methods/erc20Methods.spec";
 
-using AssetMappings as _AssetMappings;
 using AssetMappingsHarness as _AssetMappingsHarness;
 
 /////////////////// METHODS ////////////////////////
@@ -41,6 +40,10 @@ definition VIEW_FUNCTIONS(method f) returns bool = f.isView;
 // `initialize()` function
 definition INITIALIZE_FUNCTION(method f) returns bool 
     = f.selector == sig:initialize(address).selector;
+
+// `initialize()` function
+definition ADD_ASSET_MAPPING_FUNCTION(method f) returns bool 
+    = f.selector == sig:addAssetMapping(AssetMappings.AddAssetMappingInput[]).selector;
 
 ////////////////// FUNCTIONS //////////////////////
 
@@ -127,6 +130,69 @@ hook Sstore approvedAssetsTail address val (address val_old) STORAGE {
         ? assetsTailOld@old == assetsTailOld@new : assetsTailOld@new == val_old;
 }
 
+/**
+* @notice hook whole assetMappings[asset] modification
+**/
+
+ghost address assetOneAddress {
+    init_state axiom assetOneAddress == 0;
+}
+
+ghost address assetTwoAddress {
+    init_state axiom assetTwoAddress == 0;
+}
+
+/**
+* @notice Trying to hook the whole structure in one hook generates this error
+* Encountered an unexpected error in Prover, please report in certora.com. Error code 3213395558. Error message: Rule oneAssetRecordCouldBeModified timed-out
+* https://prover.certora.com/output/50375/22b99fc2619b4f009f63c212fea7c4aa/?anonymousKey=15d7a7f83916c365f9e92b13eebe9a654cf80bf0
+**/
+/*
+hook Sstore assetMappings[KEY address asset].(offset 0) AssetMappings.AssetData val STORAGE {
+    // Save first address
+    havoc assetOneAddress assuming assetOneAddress@old != 0
+        ? assetOneAddress@new == assetOneAddress@old
+        : assetOneAddress@new == asset;
+    // Save second if it different from the first
+    havoc assetTwoAddress assuming asset == assetOneAddress
+        ? assetTwoAddress@new == assetTwoAddress@old
+        : assetTwoAddress@new == asset;
+}
+*/
+
+hook Sstore assetMappings[KEY address asset].(offset 0) uint256 val STORAGE {
+    // Save first address
+    havoc assetOneAddress assuming assetOneAddress@old != 0
+        ? assetOneAddress@new == assetOneAddress@old
+        : assetOneAddress@new == asset;
+    // Save second if it different from the first
+    havoc assetTwoAddress assuming asset == assetOneAddress
+        ? assetTwoAddress@new == assetTwoAddress@old
+        : assetTwoAddress@new == asset;
+}
+
+hook Sstore assetMappings[KEY address asset].(offset 32) uint256 val STORAGE {
+    // Save first address
+    havoc assetOneAddress assuming assetOneAddress@old != 0
+        ? assetOneAddress@new == assetOneAddress@old
+        : assetOneAddress@new == asset;
+    // Save second if it different from the first
+    havoc assetTwoAddress assuming asset == assetOneAddress
+        ? assetTwoAddress@new == assetTwoAddress@old
+        : assetTwoAddress@new == asset;
+}
+
+hook Sstore assetMappings[KEY address asset].(offset 64) uint256 val STORAGE {
+    // Save first address
+    havoc assetOneAddress assuming assetOneAddress@old != 0
+        ? assetOneAddress@new == assetOneAddress@old
+        : assetOneAddress@new == asset;
+    // Save second if it different from the first
+    havoc assetTwoAddress assuming asset == assetOneAddress
+        ? assetTwoAddress@new == assetTwoAddress@old
+        : assetTwoAddress@new == asset;
+}
+
 ///////////////// PROPERTIES ///////////////////////
 
 /**
@@ -167,7 +233,7 @@ invariant reasonableLiquidationBonus(address asset)
 
 /**
 * @notice Prove bug3.patch
-* Unit test: initialization could be called once
+* Unit test: initialization could not not be called twice
 **/
 
 rule initializeCalledOnce() {
@@ -230,7 +296,23 @@ rule onlyGlobalAdminCanModifyState(method f, env e, calldataarg args)
     storage after = lastStorage;
 
     // `333` set as owner in methods block summary for `getGlobalAdmin()`
-    assert !lastReverted && before[_AssetMappings] == after[_AssetMappings]
+    assert !lastReverted && before[currentContract] == after[currentContract]
         => e.msg.sender == 333;
+}
+
+/**
+* @notice Prove bug7.patch
+* High level: only one asset record could be modified (don't mean adding new) at a time
+**/
+
+rule oneAssetRecordCouldBeModified(method f, env e, calldataarg args) 
+    filtered { f -> !VIEW_FUNCTIONS(f) && !ADD_ASSET_MAPPING_FUNCTION(f) } {
+
+    require assetOneAddress == 0;
+    require assetTwoAddress == 0;
+
+    f@withrevert(e, args);
+
+    assert !lastReverted => assetTwoAddress == 0;
 }
 
