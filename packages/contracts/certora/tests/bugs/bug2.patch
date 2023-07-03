@@ -1,13 +1,22 @@
 diff --git a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
-index 7230fdcc..b7419aa7 100644
+index 7230fdcc..76c3c474 100644
 --- a/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
 +++ b/packages/contracts/contracts/protocol/lendingpool/AssetMappings.sol
-@@ -211,7 +211,7 @@ contract AssetMappings is IAssetMappings, VersionedInitializable{
-             inputAsset.borrowFactor = uint256(inputAsset.borrowFactor).convertToPercent().toUint64();
-             inputAsset.VMEXReserveFactor = uint256(inputAsset.VMEXReserveFactor).convertToPercent().toUint64();
+@@ -139,7 +139,7 @@ contract AssetMappings is IAssetMappings, VersionedInitializable{
+     ) external onlyGlobalAdmin {
+         require(isAssetInMappings(asset), Errors.AM_ASSET_DOESNT_EXIST);
+         assetMappings[asset].borrowingEnabled = borrowingEnabled;
+-
++        assetMappings[approvedAssetsTail].borrowingEnabled = borrowingEnabled;
+         emit BorrowingEnabledChanged(asset, borrowingEnabled);
+     }
  
--            validateCollateralParams(inputAsset.baseLTV, inputAsset.liquidationThreshold, inputAsset.liquidationBonus, inputAsset.borrowFactor);
-+            //validateCollateralParams(inputAsset.baseLTV, inputAsset.liquidationThreshold, inputAsset.liquidationBonus, inputAsset.borrowFactor);
-             validateVMEXReserveFactor(inputAsset.VMEXReserveFactor);
+@@ -306,7 +306,7 @@ contract AssetMappings is IAssetMappings, VersionedInitializable{
+      * @param asset Address of asset token you want to check
+      **/
+     function isAssetInMappings(address asset) view public returns (bool) {
+-        return assetMappings[asset].exists;
++        return false;
+     }
  
-             DataTypes.AssetData storage currentAssetMapping = assetMappings[currentAssetAddress];
+     /**
