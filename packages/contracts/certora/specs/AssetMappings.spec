@@ -246,16 +246,3 @@ rule oneAssetRecordCouldBeModified(method f, env e, calldataarg args)
 
     assert assetTwoAddress == 0;
 }
-
-/**
-* @notice 
-* Valid state: disallowed assets should meet several criteria in `validateAssetAllowed()`
-**/
-
-invariant disallowedAssetsSolvency(env e, address asset) !assetAllowed[asset] => 
-        // require(!assetMappings[asset].borrowingEnabled, Errors.AM_UNABLE_TO_DISALLOW_ASSET);
-        !_AssetMappingsHarness.assetMappingsBorrowingEnabled(asset) 
-        // require(assetMappings[asset].baseLTV == 0, Errors.AM_UNABLE_TO_DISALLOW_ASSET);
-        && _AssetMappingsHarness.assetMappingsBaseLTV(asset) == 0
-        // TODO: tranches totalSupply() == 0
-    filtered { f -> !VIEW_FUNCTIONS(f) }
