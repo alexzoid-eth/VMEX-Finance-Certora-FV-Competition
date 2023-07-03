@@ -1,46 +1,7 @@
 import "./methods/erc20Methods.spec";
-
-using AssetMappingsHarness as _AssetMappingsHarness;
-
-////////////////////////////////////// METHODS //////////////////////////////////////
-
-methods {    
-    // AssetMappingsHarness 
-    function _AssetMappingsHarness.getRevisionHarness() external returns (uint256) envfree;
-    function _AssetMappingsHarness.assetMappingsBorrowingEnabled(address) external returns (bool) envfree;
-
-    // AssetMappings
-    function approvedAssetsHead() internal returns (address);
-    function approvedAssetsTail() internal returns (address);
-    function getNumApprovedTokens() internal returns (uint256);
-    function isAssetInMappings(address) internal returns (bool);
-
-    // VersionedInitializable
-    function _VersionedInitializable.lastInitializedRevision() internal;
-    function _VersionedInitializable.initializing() internal;
-
-    // addressesProvider functions
-    function _.getGlobalAdmin() external => ALWAYS(333);
-    function _.getLendingPoolConfigurator() external => CONSTANT; 
-    function _.getLendingPool() external => CONSTANT;
-
-    // ILendingPoolConfigurator functions
-    function _.totalTranches() external => NONDET;
-
-    // Lending Pool functions
-    function _.getReserveData(address,uint64) external => DISPATCHER(true);
-}
+import "./Methods.spec";
 
 ////////////////////////////////////// DEFINITIONS //////////////////////////////////////
-
-// `PercentageMath.PERCENTAGE_FACTOR`
-definition PERCENTAGE_FACTOR() returns mathint = 10^18;
-
-// `PercentageMath.HALF_PERCENT`
-definition HALF_PERCENT() returns mathint = PERCENTAGE_FACTOR() / 2;
-
-// `PercentageMath.convertToPercent()`
-definition CONVERT_TO_PERCENT_MIN_VALUE() returns uint64 = 10^14;
 
 // `view` functions
 definition VIEW_FUNCTIONS(method f) returns bool = f.isView || f.isPure;
@@ -52,6 +13,9 @@ definition INITIALIZE_FUNCTION(method f) returns bool
 // `addAssetMapping()` function
 definition ADD_ASSET_MAPPING_FUNCTION(method f) returns bool 
     = f.selector == sig:addAssetMapping(AssetMappings.AddAssetMappingInput[]).selector;
+
+definition CONFIGURE_ASSET_MAPPING_FUNCTION(method f) returns bool 
+    = f.selector == sig:configureAssetMapping(address, uint64, uint64, uint64, uint128, uint128, uint64).selector;
 
 ////////////////////////////////////// FUNCTIONS //////////////////////////////////////
 
@@ -81,44 +45,12 @@ hook Sstore approvedAssetsTail address val (address val_old) STORAGE {
 * @notice assetMappings[asset].AssetData hooks
 **/
 
-ghost mapping (address => uint64) assetBaseLTV {
-    init_state axiom forall address asset. assetBaseLTV[asset] == 0;
-}
-
-ghost mapping (address => uint64) assetLiquidationThreshold {
-    init_state axiom forall address asset. assetLiquidationThreshold[asset] == 0;
-}
-
-ghost mapping (address => uint64) assetLiquidationBonus {
-    init_state axiom forall address asset. assetLiquidationBonus[asset] == 0;
-}
-
-ghost mapping (address => uint64) assetBorrowFactor {
-    init_state axiom forall address asset. assetBorrowFactor[asset] == 0;
-}
-
-ghost mapping (address => bool) assetBorrowingEnabled {
-    init_state axiom forall address asset. assetBorrowingEnabled[asset] == false;
-}
-
 ghost mapping (address => bool) assetAllowed {
     init_state axiom forall address asset. assetAllowed[asset] == true;
 }
 
 ghost mapping (address => bool) assetExists {
     init_state axiom forall address asset. assetExists[asset] == false;
-}
-
-ghost mapping (address => uint8) assetType {
-    init_state axiom forall address asset. assetType[asset] == 0;
-}
-
-ghost mapping (address => uint64) assetVMEXReserveFactor {
-    init_state axiom forall address asset. assetVMEXReserveFactor[asset] == 0;
-}
-
-ghost mapping (address => address) assetNextApprovedAsset {
-    init_state axiom forall address asset. assetNextApprovedAsset[asset] == 0;
 }
 
 ghost address assetOneAddress {
@@ -129,78 +61,11 @@ ghost address assetTwoAddress {
     init_state axiom assetTwoAddress == 0;
 }
 
-ghost uint256 approvedTokensNumber {
-    init_state axiom approvedTokensNumber == 0;
-}
-
-/**
-* @notice Trying to hook the whole structure in one hook generates this error
-* Encountered an unexpected error in Prover, please report in certora.com. Error code 3213395558. Error message: Rule oneAssetRecordCouldBeModified timed-out
-* https://prover.certora.com/output/50375/22b99fc2619b4f009f63c212fea7c4aa/?anonymousKey=15d7a7f83916c365f9e92b13eebe9a654cf80bf0
-**/
-/*
-hook Sstore assetMappings[KEY address asset].(offset 0) AssetMappings.AssetData val STORAGE {
-    // Save first address
-    havoc assetOneAddress assuming assetOneAddress@old != 0
-        ? assetOneAddress@new == assetOneAddress@old
-        : assetOneAddress@new == asset;
-    // Save second if it different from the first
-    havoc assetTwoAddress assuming asset == assetOneAddress
-        ? assetTwoAddress@new == assetTwoAddress@old
-        : assetTwoAddress@new == asset;
-}
-*/
-
-/*
-struct AssetData {
-    uint128 supplyCap;
-    uint128 borrowCap;
-    ...
-}
-*/
-hook Sstore assetMappings[KEY address asset].(offset 0) uint256 val STORAGE {
-
-    // Assuming `asset` is not zero because of `Address.isContract(currentAssetAddress)` check
-    require asset != 0;
-
-    // Save first address
-    havoc assetOneAddress assuming assetOneAddress@old != 0
-        ? assetOneAddress@new == assetOneAddress@old
-        : assetOneAddress@new == asset;
-
-    // Save second if it different from the first
-    havoc assetTwoAddress assuming asset == assetOneAddress
-        ? assetTwoAddress@new == assetTwoAddress@old
-        : assetTwoAddress@new == asset;
-}
-
-/*
-struct AssetData {
-    ...
-    uint64 baseLTV;
-    uint64 liquidationThreshold; 
-    uint64 liquidationBonus; 
-    uint64 borrowFactor; 
-    ...
-}
-*/
 hook Sstore assetMappings[KEY address asset].(offset 32) uint256 val STORAGE {
 
     // Assuming `asset` is not zero because of `Address.isContract(currentAssetAddress)` check
     require asset != 0;
 
-    // AssetData.baseLTV
-    assetBaseLTV[asset] = require_uint64(val & 0xFFFFFFFFFFFFFFFF);  
-
-    // AssetData.liquidationThreshold
-    assetLiquidationThreshold[asset] = require_uint64((val >> 64) & 0xFFFFFFFFFFFFFFFF);  
-
-    // AssetData.liquidationBonus
-    assetLiquidationBonus[asset] = require_uint64((val >> 128) & 0xFFFFFFFFFFFFFFFF);  
-
-    // AssetData.borrowFactor
-    assetBorrowFactor[asset] = require_uint64(val >> 192); 
-
     // Save first address
     havoc assetOneAddress assuming assetOneAddress@old != 0
         ? assetOneAddress@new == assetOneAddress@old
@@ -212,41 +77,11 @@ hook Sstore assetMappings[KEY address asset].(offset 32) uint256 val STORAGE {
         : assetTwoAddress@new == asset;
 }
 
-/*
-struct AssetData {
-    ...
-    bool borrowingEnabled;
-    bool isAllowed;
-    bool exists;
-    uint8 assetType;
-    uint64 VMEXReserveFactor; 
-    address nextApprovedAsset;
-}
-*/
 hook Sstore assetMappings[KEY address asset].(offset 64) uint256 val STORAGE {
 
     // Assuming `asset` is not zero because of `Address.isContract(currentAssetAddress)` check
     require asset != 0;
 
-    // AssetData.borrowingEnabled
-    assetBorrowingEnabled[asset] = (val & 0x200000) != 0; 
-
-    // AssetData.isAllowed
-    assetAllowed[asset] = (val & 0x400000) != 0; 
-
-    // AssetData.exists
-    assetExists[asset] = (val & 0x800000) != 0; 
-
-    // AssetData.assetType
-    assetType[asset] = require_uint8((val >> 24) & 0xFF);
-
-    // AssetData.VMEXReserveFactor
-    assetVMEXReserveFactor[asset] = require_uint64((val >> 32) & 0xFFFFFFFF);  
-
-    // AssetData.nextApprovedAsset
-    // TODO: `require_address()` not supported yet
-    // assetNextApprovedAsset[asset] = require_address(uint160(val >> 96)); 
-
     // Save first address
     havoc assetOneAddress assuming assetOneAddress@old != 0
         ? assetOneAddress@new == assetOneAddress@old
@@ -256,6 +91,14 @@ hook Sstore assetMappings[KEY address asset].(offset 64) uint256 val STORAGE {
     havoc assetTwoAddress assuming asset == assetOneAddress
         ? assetTwoAddress@new == assetTwoAddress@old
         : assetTwoAddress@new == asset;
+}
+
+hook Sstore assetMappings[KEY address asset].(offset 65) bool val STORAGE {
+    assetAllowed[asset] = val;    
+}
+
+hook Sstore assetMappings[KEY address asset].(offset 66) bool val STORAGE {
+    assetExists[asset] = val;
 }
 
 /**
@@ -271,7 +114,7 @@ hook Sstore lastInitializedRevision uint256 val STORAGE {
 }
 
 hook Sload bool val initializing STORAGE {
-    // initializing` is changed only inside an `initialize()` function
+    // `initializing` is changed only inside `initialize()` function
     require val == false;
 }
 
@@ -282,6 +125,7 @@ hook Sload bool val initializing STORAGE {
 * Valid state: revision version is stored in `lastInitializedRevision` as soon as contract 
 * is initialized
 **/
+
 invariant lastRevisionSolvency() _AssetMappingsHarness.getRevisionHarness() >= lastRevision
     filtered { f -> !VIEW_FUNCTIONS(f) }
 
@@ -313,9 +157,9 @@ rule existingAssetRecordCouldBeModified(method f, env e, calldataarg args)
 
     require assetOneAddress == 0;
 
-    f@withrevert(e, args);
+    f(e, args);
 
-    assert !lastReverted && assetOneAddress != 0 => isAssetInMappings(e, assetOneAddress); 
+    assert assetOneAddress != 0 => isAssetInMappings(e, assetOneAddress); 
 }
 
 /**
@@ -403,3 +247,15 @@ rule oneAssetRecordCouldBeModified(method f, env e, calldataarg args)
     assert assetTwoAddress == 0;
 }
 
+/**
+* @notice 
+* Valid state: disallowed assets should meet several criteria in `validateAssetAllowed()`
+**/
+
+invariant disallowedAssetsSolvency(env e, address asset) !assetAllowed[asset] => 
+        // require(!assetMappings[asset].borrowingEnabled, Errors.AM_UNABLE_TO_DISALLOW_ASSET);
+        !_AssetMappingsHarness.assetMappingsBorrowingEnabled(asset) 
+        // require(assetMappings[asset].baseLTV == 0, Errors.AM_UNABLE_TO_DISALLOW_ASSET);
+        && _AssetMappingsHarness.assetMappingsBaseLTV(asset) == 0
+        // TODO: tranches totalSupply() == 0
+    filtered { f -> !VIEW_FUNCTIONS(f) }

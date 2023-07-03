@@ -16,4 +16,8 @@ contract AssetMappingsHarness is AssetMappings {
     function assetMappingsBorrowingEnabled(address asset) view external returns(bool) {
         return assetMappings[asset].borrowingEnabled;
     }
+
+    function assetMappingsBaseLTV(address asset) view external returns(uint64) {
+        return assetMappings[asset].baseLTV;
+    }
 }
